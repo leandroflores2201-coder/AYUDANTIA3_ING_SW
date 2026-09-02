@@ -20,6 +20,20 @@ model Category {
 
   @@map("categories")
 }
+// Modelo de Marca
+model Brand {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique @db.VarChar(80)
+  country   String?   @db.VarChar(60)
+  website   String?   @db.VarChar(200)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relación 1:N con Productos (Una marca tiene muchos productos)
+  products  Product[]
+
+  @@map("brands")
+}
 
 // Modelo de Producto
 model Product {
