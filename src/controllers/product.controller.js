@@ -62,29 +62,155 @@ export const getAllProducts = async (req, res, next) => {
   }
 };
 
-    // Filtro por Stock
-    if (inStock !== undefined) {
-      const onlyInStock = inStock === true || inStock === 'true';
-      where.stock = onlyInStock ? { gt: 0 } : 0;
+/**
+ * Obtener un producto por su ID
+ * GET /api/products/:id
+ */
+export const getProductById = async (req, res, next) => {
+  try {
+    const productId = Number(req.params.id);
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      include: {
+        category: true,
+        brand: true
+      }
+    });
+
+    if (!product) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
-    // Consulta a la Base de Datos
-    const products = await prisma.product.findMany({
-      where,
-      include: {
-        category: {
-          select: { id: true, name: true }
-        },
-        brand: {
-          select: { id: true, name: true, country: true, website: true }
-        }
+    res.status(200).json(product);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Crear un nuevo producto
+ * POST /api/products
+ */
+export const createProduct = async (req, res, next) => {
+  try {
+    const { name, description, price, stock, sku, isAvailable, categoryId, brandId } = req.body;
+
+    // 1. Verificar si la categoría existe
+    const categoryExists = await prisma.category.findUnique({
+      where: { id: categoryId }
+    });
+
+    if (!categoryExists) {
+      return res.status(404).json({
+        error: `La categoría con ID ${categoryId} no existe.`
+      });
+    }
+
+    // 2. Verificar si la marca existe (si se proporcionó brandId)
+    if (brandId) {
+      const brandExists = await prisma.brand.findUnique({
+        where: { id: brandId }
+      });
+      if (!brandExists) {
+        return res.status(404).json({
+          error: `La marca con ID ${brandId} no existe.`
+        });
+      }
+    }
+
+    // 3. Crear el producto
+    const newProduct = await prisma.product.create({
+      data: {
+        name,
+        description,
+        price,
+        stock,
+        sku,
+        isAvailable: isAvailable ?? true,
+        categoryId,
+        brandId
       },
-      orderBy: { createdAt: 'desc' }
+      include: {
+        category: true,
+        brand: true
+      }
+    });
+
+    res.status(201).json({
+      mensaje: 'Producto creado exitosamente',
+      data: newProduct
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Actualizar un producto existente
+ * PUT /api/products/:id
+ */
+export const updateProduct = async (req, res, next) => {
+  try {
+    const productId = Number(req.params.id);
+    const updateData = { ...req.body };
+
+    // Si intenta cambiar de categoría, validar que exista
+    if (updateData.categoryId) {
+      const categoryExists = await prisma.category.findUnique({
+        where: { id: updateData.categoryId }
+      });
+      if (!categoryExists) {
+        return res.status(404).json({
+          error: `La categoría con ID ${updateData.categoryId} no existe.`
+        });
+      }
+    }
+
+    // Si intenta cambiar de marca, validar que exista
+    if (updateData.brandId) {
+      const brandExists = await prisma.brand.findUnique({
+        where: { id: updateData.brandId }
+      });
+      if (!brandExists) {
+        return res.status(404).json({
+          error: `La marca con ID ${updateData.brandId} no existe.`
+        });
+      }
+    }
+
+    const updatedProduct = await prisma.product.update({
+      where: { id: productId },
+      data: updateData,
+      include: {
+        category: true,
+        brand: true
+      }
     });
 
     res.status(200).json({
-      total: products.length,
-      data: products
+      mensaje: 'Producto actualizado exitosamente',
+      data: updatedProduct
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Eliminar un producto
+ * DELETE /api/products/:id
+ */
+export const deleteProduct = async (req, res, next) => {
+  try {
+    const productId = Number(req.params.id);
+
+    await prisma.product.delete({
+      where: { id: productId }
+    });
+
+    res.status(200).json({
+      mensaje: 'Producto eliminado exitosamente'
     });
   } catch (error) {
     next(error);
