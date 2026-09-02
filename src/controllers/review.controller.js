@@ -1,4 +1,4 @@
-import { prisma } from '../lib/prisma.js'; // Ajusta la ruta a tu instancia de Prisma
+import prisma from '../config/prisma.js';
 import { createReviewSchema } from '../schemas/review.schema.js'; // Ajusta la ruta a tu esquema de Zod
 
 // GET /api/products/:id/reviews - Obtener reseñas del producto y promedio de calificación
