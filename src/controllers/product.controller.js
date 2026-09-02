@@ -1,17 +1,22 @@
-import prisma from '../config/prisma.js';
+import prisma from '../config/prisma.js'; 
 
 /**
  * Obtener todos los productos con filtros avanzados
- * GET /api/products?categoryId=1&minPrice=10000&maxPrice=50000&inStock=true
+ * GET /api/products?categoryId=1&brandId=1&minPrice=10000&maxPrice=50000&inStock=true
  */
 export const getAllProducts = async (req, res, next) => {
   try {
-    const { categoryId, minPrice, maxPrice, inStock } = req.query;
+    const { categoryId, brandId, minPrice, maxPrice, inStock } = req.query;
 
     const where = {};
 
     if (categoryId !== undefined) {
       where.categoryId = Number(categoryId);
+    }
+
+    // Selección por ID de marca
+    if (brandId !== undefined) {
+      where.brandId = Number(brandId);
     }
 
     if (minPrice !== undefined || maxPrice !== undefined) {
@@ -33,6 +38,14 @@ export const getAllProducts = async (req, res, next) => {
             id: true,
             name: true
           }
+        },
+        brand: {
+          select: {
+            id: true,
+            name: true,
+            country: true,
+            website: true
+          }
         }
       },
       orderBy: {
@@ -49,127 +62,29 @@ export const getAllProducts = async (req, res, next) => {
   }
 };
 
-/**
- * Obtener un producto por su ID
- * GET /api/products/:id
- */
-export const getProductById = async (req, res, next) => {
-  try {
-    const productId = Number(req.params.id);
+    // Filtro por Stock
+    if (inStock !== undefined) {
+      const onlyInStock = inStock === true || inStock === 'true';
+      where.stock = onlyInStock ? { gt: 0 } : 0;
+    }
 
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
+    // Consulta a la Base de Datos
+    const products = await prisma.product.findMany({
+      where,
       include: {
-        category: true
-      }
-    });
-
-    if (!product) {
-      return res.status(404).json({ error: 'Producto no encontrado' });
-    }
-
-    res.status(200).json(product);
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Crear un nuevo producto
- * POST /api/products
- */
-export const createProduct = async (req, res, next) => {
-  try {
-    const { name, description, price, stock, sku, isAvailable, categoryId } = req.body;
-
-    // 1. Verificar si la categoría existe antes de asociarla
-    const categoryExists = await prisma.category.findUnique({
-      where: { id: categoryId }
-    });
-
-    if (!categoryExists) {
-      return res.status(404).json({
-        error: `La categoría con ID ${categoryId} no existe.`
-      });
-    }
-
-    // 2. Crear el producto
-    const newProduct = await prisma.product.create({
-      data: {
-        name,
-        description,
-        price,
-        stock,
-        sku,
-        isAvailable: isAvailable ?? true,
-        categoryId
+        category: {
+          select: { id: true, name: true }
+        },
+        brand: {
+          select: { id: true, name: true, country: true, website: true }
+        }
       },
-      include: {
-        category: true
-      }
-    });
-
-    res.status(201).json({
-      mensaje: 'Producto creado exitosamente',
-      data: newProduct
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Actualizar un producto existente
- * PUT /api/products/:id
- */
-export const updateProduct = async (req, res, next) => {
-  try {
-    const productId = Number(req.params.id);
-    const updateData = { ...req.body };
-
-    // Si intenta cambiar de categoría, validar que exista
-    if (updateData.categoryId) {
-      const categoryExists = await prisma.category.findUnique({
-        where: { id: updateData.categoryId }
-      });
-      if (!categoryExists) {
-        return res.status(404).json({
-          error: `La categoría con ID ${updateData.categoryId} no existe.`
-        });
-      }
-    }
-
-    const updatedProduct = await prisma.product.update({
-      where: { id: productId },
-      data: updateData,
-      include: {
-        category: true
-      }
+      orderBy: { createdAt: 'desc' }
     });
 
     res.status(200).json({
-      mensaje: 'Producto actualizado exitosamente',
-      data: updatedProduct
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Eliminar un producto
- * DELETE /api/products/:id
- */
-export const deleteProduct = async (req, res, next) => {
-  try {
-    const productId = Number(req.params.id);
-
-    await prisma.product.delete({
-      where: { id: productId }
-    });
-
-    res.status(200).json({
-      mensaje: 'Producto eliminado exitosamente'
+      total: products.length,
+      data: products
     });
   } catch (error) {
     next(error);
