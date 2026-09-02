@@ -1,4 +1,4 @@
-import { prisma } from '../lib/prisma.js'; // Ajusta la ruta a tu instancia de Prisma
+import prisma from '../config/prisma.js';
 import { createBrandSchema } from '../schemas/brand.schema.js'; // Ajusta la ruta a tu esquema de Zod
 
 // GET /api/brands - Listar marcas con la cantidad de productos de cada una
