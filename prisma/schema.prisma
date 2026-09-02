@@ -35,23 +35,31 @@ model Brand {
   @@map("brands")
 }
 
-// Modelo de Producto
 model Product {
   id          Int      @id @default(autoincrement())
-  name        String   @db.VarChar(150)
-  description String?  @db.Text
+  name        String
+  description String?
   price       Float
-  stock       Int      @default(0)
-  sku         String   @unique @db.VarChar(50)
+  stock       Int
+  sku         String   @unique
   isAvailable Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Relación N:1 con Categoría (Cada producto pertenece a una categoría)
+  // Relación con Categoría
   categoryId  Int
-  category    Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  category    Category @relation(fields: [categoryId], references: [id])
 
-  @@map("products")
+  // --- AGREGA ESTAS LÍNEAS PARA SOLUCIONAR EL ERROR ---
+  
+  // Relación N:1 con Marca (Opcional o obligatoria según tu caso)
+  brandId     Int?
+  brand       Brand?   @relation(fields: [brandId], references: [id])
+
+  // Relación 1:N con Reseñas (Un producto tiene muchas reseñas)
+  reviews     Review[]
+
+  // --------------------------------------------------
 }
 
 // Modelo de Reseña
